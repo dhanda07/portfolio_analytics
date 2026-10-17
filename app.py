@@ -1,5 +1,7 @@
 # 1. Install required libraries
-!pip install -q yfinance plotly pandas numpy openpyxl requests seaborn matplotlib
+git add app.py
+git commit -m "Remove notebook pip install command for Streamlit compatibility"
+git push origin main
 
 import os
 import io
