@@ -9,12 +9,12 @@ import io
 
 # Page Configuration
 st.set_page_config(
-    page_title="Aladdin Wealth & Risk Engine",
+    page_title=" Wealth & Risk Engine",
     page_icon="🛡️",
     layout="wide"
 )
 
-st.title("🛡️ Aladdin Wealth: Institutional Portfolio Analytics")
+st.title("🛡️  Wealth: Institutional Portfolio Analytics")
 st.markdown("Welcome to your institutional-grade portfolio risk and advisory engine. Upload your stock and mutual fund portfolios below for deep analytics, INR valuation summaries, correlation matrices, and LLM-driven advisory.")
 
 st.markdown("---")
@@ -112,14 +112,14 @@ if stock_file is not None and mf_file is not None:
 
         # Gemini LLM Advisory Section
         st.markdown("---")
-        st.header("🤖 Aladdin Wealth LLM Institutional Advisory")
+        st.header("🤖  Wealth LLM Institutional Advisory")
         
         if "GEMINI_API_KEY" in st.secrets:
             api_key = st.secrets["GEMINI_API_KEY"]
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
             
             prompt_text = f"""
-            You are a Senior CFA Charterholder and Institutional Portfolio Manager (Aladdin Wealth Engine).
+            You are a Senior CFA Charterholder and Institutional Portfolio Manager ( Wealth Engine).
             Analyze this client portfolio in Indian Rupees (INR) and provide non-generic, actionable advice:
             
             - Investor Name: Ankur Dhanda
