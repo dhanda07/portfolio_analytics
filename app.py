@@ -105,7 +105,7 @@ if stock_file is not None and mf_file is not None:
             
             fig_corr = px.imshow(
                 corr_matrix, text_auto=".2f", aspect="auto",
-                color_continuousScale="Blues", range_color=[-1, 1],
+                color_continuous_scale="Blues", range_color=[-1, 1],
                 title="<b>Cross-Asset Correlation Matrix</b>"
             )
             st.plotly_chart(fig_corr, use_container_width=True)
