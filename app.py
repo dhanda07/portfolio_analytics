@@ -7,14 +7,14 @@ import plotly.graph_objects as go
 import requests
 import io
 
-# Page Configuration (BlackRock Aladdin Theme)
+# Page Configuration
 st.set_page_config(
-    page_title="BlackRock Aladdin Wealth & Risk Engine",
+    page_title="Aladdin Wealth & Risk Engine",
     page_icon="🛡️",
     layout="wide"
 )
 
-st.title("🛡️ BlackRock Aladdin Wealth: Institutional Portfolio Analytics")
+st.title("🛡️ Aladdin Wealth: Institutional Portfolio Analytics")
 st.markdown("Welcome to your institutional-grade portfolio risk and advisory engine. Upload your stock and mutual fund portfolios below for deep analytics, INR valuation summaries, correlation matrices, and LLM-driven advisory.")
 
 st.markdown("---")
@@ -105,21 +105,21 @@ if stock_file is not None and mf_file is not None:
             
             fig_corr = px.imshow(
                 corr_matrix, text_auto=".2f", aspect="auto",
-                color_continuousScale="Blues", range_colors=[-1, 1],
+                color_continuousScale="Blues", range_color=[-1, 1],
                 title="<b>Cross-Asset Correlation Matrix</b>"
             )
             st.plotly_chart(fig_corr, use_container_width=True)
 
         # Gemini LLM Advisory Section
         st.markdown("---")
-        st.header("🤖 BlackRock Aladdin LLM Institutional Advisory")
+        st.header("🤖 Aladdin Wealth LLM Institutional Advisory")
         
         if "GEMINI_API_KEY" in st.secrets:
             api_key = st.secrets["GEMINI_API_KEY"]
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
             
             prompt_text = f"""
-            You are a Senior CFA Charterholder and Institutional Portfolio Manager (BlackRock Aladdin Engine).
+            You are a Senior CFA Charterholder and Institutional Portfolio Manager (Aladdin Wealth Engine).
             Analyze this client portfolio in Indian Rupees (INR) and provide non-generic, actionable advice:
             
             - Investor Name: Ankur Dhanda
