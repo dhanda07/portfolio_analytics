@@ -150,9 +150,9 @@ if stock_file is not None and mf_file is not None:
         
         # Parse Stocks & Crypto
         df_stocks_raw = pd.read_csv(stock_file, header=None) if stock_file.name.endswith('.csv') else pd.read_excel(stock_file, header=None)
-        stock_skip = 10
+        stock_skip = 0
         for i, r in df_stocks_raw.iterrows():
-            if 'stock name' in str(r.values).lower() or 'isin' in str(r.values).lower() or 'asset type' in str(r.values).lower():
+            if any(term in str(r.values).lower() for term in ['stock name', 'isin', 'asset type', 'ticker']):
                 stock_skip = i
                 break
         df_stocks = pd.read_excel(stock_file, skiprows=stock_skip) if not stock_file.name.endswith('.csv') else pd.read_csv(stock_file, skiprows=stock_skip)
@@ -160,9 +160,9 @@ if stock_file is not None and mf_file is not None:
 
         # Parse Mutual Funds
         df_mf_raw = pd.read_csv(mf_file, header=None) if mf_file.name.endswith('.csv') else pd.read_excel(mf_file, header=None)
-        mf_skip = 20
+        mf_skip = 0
         for i, r in df_mf_raw.iterrows():
-            if 'scheme name' in str(r.values).lower() or 'amc' in str(r.values).lower():
+            if any(term in str(r.values).lower() for term in ['scheme name', 'amc', 'units', 'current value']):
                 mf_skip = i
                 break
         df_mf = pd.read_excel(mf_file, skiprows=mf_skip) if not mf_file.name.endswith('.csv') else pd.read_csv(mf_file, skiprows=mf_skip)
@@ -216,8 +216,8 @@ if stock_file is not None and mf_file is not None:
             st.plotly_chart(fig_split, use_container_width=True)
 
         with c_col2:
-            stock_names = df_stocks.iloc[:, 1].dropna().astype(str).tolist()[:3] if len(df_stocks.columns) > 1 else ["Asset1", "Asset2"]
-            mf_names = df_mf.iloc[:, 0].dropna().astype(str).tolist()[:4]
+            stock_names = df_stocks.iloc[:, 1].dropna().astype(str).tolist()[:3] if len(df_stocks.columns) > 1 and len(df_stocks) > 0 else ["Asset1", "Asset2"]
+            mf_names = df_mf.iloc[:, 0].dropna().astype(str).tolist()[:4] if len(df_mf.columns) > 0 and len(df_mf) > 0 else ["MF1", "MF2"]
             all_assets = stock_names + mf_names
             
             unique_asset_names = [f"{str(a)[:10]}_{i}" for i, a in enumerate(all_assets)]
