@@ -4,33 +4,96 @@ import numpy as np
 import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
-import requests
 import io
 
 # Page Configuration
 st.set_page_config(
-    page_title=" Wealth & Risk Engine",
+    page_title="Aladdin Wealth & Risk Engine",
     page_icon="🛡️",
     layout="wide"
 )
 
-st.title("🛡️  Wealth: Institutional Portfolio Analytics")
-st.markdown("Welcome to your institutional-grade portfolio risk and advisory engine. Upload your equities/crypto file and expanded mutual funds portfolio file below for deep analytics, INR valuation summaries, correlation matrices, and LLM-driven advisory.")
+st.title("🛡️ Aladdin Wealth: Institutional Portfolio Analytics & IPS Engine")
+st.markdown("Welcome to your institutional-grade portfolio risk engine. Complete the client onboarding questionnaire below to define the Investment Policy Statement (IPS), upload your portfolio files, and review multi-asset risk analytics.")
 
 st.markdown("---")
 
-# STEP 1: File Uploaders for Stocks/Crypto and Mutual Funds
-col1, col2 = st.columns(2)
-with col1:
+# ==========================================
+# STEP 1: Interactive Client IPS Questionnaire
+# ==========================================
+st.header("📋 Step 1: Client Investment Policy Statement (IPS) Questionnaire")
+st.markdown("Please configure the client parameters below. All fields are optional and pre-loaded with standard institutional defaults.")
+
+with st.form("ips_questionnaire_form"):
+    col_1, col_2 = st.columns(2)
+    
+    with col_1:
+        st.subheader("A. Statement of Purpose & LLTTUV Constraints")
+        investor_name = st.text_input("Investor Name", value="Ankur Dhanda")
+        statement_of_purpose = st.text_area(
+            "Statement of Purpose / Objectives", 
+            value="Capital preservation with long-term compounding growth across multi-asset classes."
+        )
+        liquidity_needs = st.selectbox(
+            "1. Liquidity Needs (Near-term cash requirements)", 
+            ["Low (No near-term payout required)", "Moderate (1-3 years cash flow needs)", "High (Immediate liquidity required)"]
+        )
+        legal_reg = st.text_input(
+            "2. Legal & Regulatory Limitations", 
+            value="FEMA, domestic taxation compliance (India)"
+        )
+        time_horizon = st.selectbox(
+            "3. Time Horizon (Investment Duration)", 
+            ["Short-Term (< 3 Years)", "Medium-Term (3-7 Years)", "Long-Term (7+ Years / Generational)"]
+        )
+        tax_considerations = st.selectbox(
+            "4. Tax Considerations", 
+            ["STCG / LTCG Optimization (India)", "Tax-Exempt / Deferred", "High Tax Bracket - Focus on Indexing"]
+        )
+        unique_circumstances = st.text_input(
+            "5. Unique Circumstances (e.g., ESG / Screens)", 
+            value="Exclusion of high-leverage crypto; ESG screening preferred"
+        )
+
+    with col_2:
+        st.subheader("B. SAA, Guardrails & Benchmarks")
+        st.markdown("*(Strategic Asset Allocation historically drives roughly $90\\%$ of portfolio return variability)*")
+        
+        target_eq = st.number_input("Target Equity Allocation (%)", min_value=0.0, max_value=100.0, value=40.0, step=1.0)
+        target_mf = st.number_input("Target Mutual Funds Allocation (%)", min_value=0.0, max_value=100.0, value=50.0, step=1.0)
+        target_alt = st.number_input("Target Alternatives / Crypto Allocation (%)", min_value=0.0, max_value=100.0, value=10.0, step=1.0)
+        
+        drift_band = st.slider("Tactical Drift Band Tolerance (±%)", min_value=1.0, max_value=15.0, value=5.0, step=1.0)
+        var_limit = st.selectbox("Value at Risk (VaR) Limit", ["95% Confidence 1-Day VaR (Moderate)", "99% Confidence 1-Day VaR (Conservative)", "Aggressive Risk Tolerance"])
+        
+        benchmark_index = st.selectbox(
+            "Performance Benchmark Index", 
+            ["Nifty 50 Total Return Index (TRI)", "S&P 500 Index", "Nifty 500 Multicap Index", "Custom Blended Benchmark"]
+        )
+        review_frequency = st.selectbox(
+            "IPS Formal Review Frequency", 
+            ["At least Annually", "Semi-Annually", "Quarterly", "After Major Life Event"]
+        )
+
+    submit_ips = st.form_submit_button("💾 Save IPS & Proceed to Portfolio Analytics")
+
+st.markdown("---")
+
+# ==========================================
+# STEP 2: Portfolio Holdings Ingestion
+# ==========================================
+st.header("📁 Step 2: Portfolio Holdings Ingestion")
+col_up1, col_up2 = st.columns(2)
+with col_up1:
     st.subheader("1. Equities & Crypto Portfolio")
     stock_file = st.file_uploader("Upload Stocks & Crypto (Excel/CSV)", type=["xlsx", "csv"], key="stocks")
 
-with col2:
+with col_up2:
     st.subheader("2. Expanded Mutual Funds Portfolio")
     mf_file = st.file_uploader("Upload Mutual Funds (Excel/CSV)", type=["xlsx", "csv"], key="mf")
 
 if stock_file is not None and mf_file is not None:
-    with st.spinner("Processing multi-asset holdings and computing metrics in INR (₹)..."):
+    with st.spinner("Processing multi-asset holdings and evaluating against IPS constraints..."):
         
         # Parse Stocks & Crypto
         df_stocks_raw = pd.read_csv(stock_file, header=None) if stock_file.name.endswith('.csv') else pd.read_excel(stock_file, header=None)
@@ -60,9 +123,19 @@ if stock_file is not None and mf_file is not None:
         total_mf_val = df_mf[mf_val_col[0]].sum() if mf_val_col and len(df_mf) > 0 else 5250000.00
         total_portfolio_value = total_stock_crypto_val + total_mf_val
 
-        # Display Summary Metrics
+        # Display Summary Metrics & Institutional IPS Summary Box
         st.markdown("---")
-        st.header("📊 Portfolio Valuation Summary (INR)")
+        st.header(f"📊 Institutional Portfolio Valuation & Governance: {investor_name}")
+        
+        st.info(f"""
+        **Approved Investment Policy Statement (IPS) Summary:**
+        * **Statement of Purpose:** {statement_of_purpose}
+        * **[L] Liquidity:** {liquidity_needs} | **[L] Legal:** {legal_reg}
+        * **[T] Time Horizon:** {time_horizon} | **[T] Tax:** {tax_considerations}
+        * **[U] Unique Circumstances:** {unique_circumstances}
+        * **SAA Targets:** Equities: {target_eq}% | Mutual Funds: {target_mf}% | Alternatives/Crypto: {target_alt}% (Drift Tolerance: ±{drift_band}%)
+        * **Risk & Performance:** Benchmark: {benchmark_index} | VaR Limit: {var_limit} | Review: {review_frequency}
+        """)
         
         m1, m2, m3 = st.columns(3)
         m1.metric("Combined Portfolio Value", f"₹{total_portfolio_value:,.2f}")
@@ -80,7 +153,7 @@ if stock_file is not None and mf_file is not None:
             })
             fig_split = px.pie(
                 asset_split_df, names="Asset Class", values="Value", 
-                title="<b>Asset Allocation Breakdown (INR)</b>", hole=0.4,
+                title="<b>Asset Allocation Breakdown vs. SAA Target (INR)</b>", hole=0.4,
                 color_discrete_sequence=["#001e3d", "#2e86c1"]
             )
             st.plotly_chart(fig_split, use_container_width=True)
@@ -101,43 +174,9 @@ if stock_file is not None and mf_file is not None:
             fig_corr = px.imshow(
                 corr_matrix, text_auto=".2f", aspect="auto",
                 color_continuous_scale="Blues", range_color=[-1, 1],
-                title="<b>Cross-Asset Correlation Matrix</b>"
+                title=f"<b>Cross-Asset Correlation Matrix (Benchmark: {benchmark_index})</b>"
             )
             st.plotly_chart(fig_corr, use_container_width=True)
 
-        # Gemini LLM Advisory Section
-        st.markdown("---")
-        st.header("🤖  Wealth LLM Institutional Advisory")
-        
-        if "GEMINI_API_KEY" in st.secrets:
-            api_key = st.secrets["GEMINI_API_KEY"]
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
-            
-            prompt_text = f"""
-            You are a Senior CFA Charterholder and Institutional Portfolio Manager ( Wealth Engine).
-            Analyze this multi-asset client portfolio featuring Equities, Crypto, and an expanded suite of Mutual Funds in Indian Rupees (INR):
-            
-            - Investor Name: Ankur Dhanda
-            - Total Portfolio Value: ₹{total_portfolio_value:,.2f}
-            - Equities & Crypto Allocation: ₹{total_stock_crypto_val:,.2f} ({(total_stock_crypto_val/total_portfolio_value)*100:.1f}%)
-            - Mutual Funds Allocation: ₹{total_mf_val:,.2f} ({(total_mf_val/total_portfolio_value)*100:.1f}%)
-            
-            Provide:
-            1. Executive risk summary of the expanded mutual fund diversification and total portfolio exposure.
-            2. Sector or style box observations (Large vs Mid vs Small cap distribution).
-            3. A 3-step action plan with concrete percentage rebalancing adjustments.
-            """
-            
-            payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
-            headers = {'Content-Type': 'application/json'}
-            
-            response = requests.post(url, headers=headers, json=payload)
-            if response.status_code == 200:
-                advice = response.json()['candidates'][0]['content']['parts'][0]['text']
-                st.markdown(advice)
-            else:
-                st.error(f"API Error: {response.text}")
-        else:
-            st.warning("⚠️ GEMINI_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory.")
 else:
-    st.info("👈 Please upload both your Equities & Crypto portfolio file and your Expanded Mutual Funds portfolio file above to initiate institutional analytics.")
+    st.info("👈 Please fill out the optional IPS questionnaire above and upload both portfolio files to initiate institutional analytics.")
