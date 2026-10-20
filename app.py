@@ -4,17 +4,18 @@ import numpy as np
 import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
+import requests
 import io
 
 # Page Configuration
 st.set_page_config(
-    page_title="Wealth & Risk Engine",
+    page_title="Aladdin Wealth & Risk Engine",
     page_icon="🛡️",
     layout="wide"
 )
 
-st.title("🛡️ Wealth: Institutional Portfolio Analytics & IPS Engine")
-st.markdown("Welcome to your institutional-grade portfolio risk engine. Complete the client onboarding questionnaire below to define the Investment Policy Statement (IPS), upload your portfolio files, and review multi-asset risk analytics.")
+st.title("🛡️ Aladdin Wealth: Institutional Portfolio Analytics & IPS Engine")
+st.markdown("Welcome to your institutional-grade portfolio risk engine. Configure client IPS constraints, upload portfolio files, and review multi-asset risk analytics alongside Gemini institutional advisory.")
 
 st.markdown("---")
 
@@ -22,8 +23,6 @@ st.markdown("---")
 # STEP 1: Interactive Client IPS Questionnaire
 # ==========================================
 st.header("📋 Step 1: Client Investment Policy Statement (IPS) Questionnaire")
-st.markdown("Please configure the client parameters below. All fields are optional and pre-loaded with standard institutional defaults.")
-
 with st.form("ips_questionnaire_form"):
     col_1, col_2 = st.columns(2)
     
@@ -57,8 +56,6 @@ with st.form("ips_questionnaire_form"):
 
     with col_2:
         st.subheader("B. SAA, Guardrails & Benchmarks")
-        st.markdown("*(Strategic Asset Allocation historically drives roughly $90\\%$ of portfolio return variability)*")
-        
         target_eq = st.number_input("Target Equity Allocation (%)", min_value=0.0, max_value=100.0, value=40.0, step=1.0)
         target_mf = st.number_input("Target Mutual Funds Allocation (%)", min_value=0.0, max_value=100.0, value=50.0, step=1.0)
         target_alt = st.number_input("Target Alternatives / Crypto Allocation (%)", min_value=0.0, max_value=100.0, value=10.0, step=1.0)
@@ -133,7 +130,7 @@ if stock_file is not None and mf_file is not None:
         * **[L] Liquidity:** {liquidity_needs} | **[L] Legal:** {legal_reg}
         * **[T] Time Horizon:** {time_horizon} | **[T] Tax:** {tax_considerations}
         * **[U] Unique Circumstances:** {unique_circumstances}
-        * **SAA Targets:** Equities: {target_eq}% | Mutual Funds: {target_mf}% | Alternatives/Crypto: {target_alt}% (Drift Tolerance: ±{drift_band}%)
+        * **SAA Targets:** Equities & Crypto: {target_eq}% | Mutual Funds: {target_mf}% (Drift Tolerance: ±{drift_band}%)
         * **Risk & Performance:** Benchmark: {benchmark_index} | VaR Limit: {var_limit} | Review: {review_frequency}
         """)
         
@@ -163,7 +160,6 @@ if stock_file is not None and mf_file is not None:
             mf_names = df_mf.iloc[:, 0].dropna().astype(str).tolist()[:4]
             all_assets = stock_names + mf_names
             
-            # Ensure unique column names to prevent Narwhals DuplicateError
             unique_asset_names = [f"{str(a)[:10]}_{i}" for i, a in enumerate(all_assets)]
             
             np.random.seed(42)
@@ -178,5 +174,94 @@ if stock_file is not None and mf_file is not None:
             )
             st.plotly_chart(fig_corr, use_container_width=True)
 
+        # ==========================================
+        # STEP 3: Gemini LLM Institutional Advisory
+        # ==========================================
+        st.markdown("---")
+        st.header("🤖 Aladdin Wealth LLM Institutional Advisory")
+        
+        if "GEMINI_API_KEY" in st.secrets:
+            api_key = st.secrets["GEMINI_API_KEY"]
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
+            
+            system_prompt = f"""
+            You are a Senior CFA Charterholder and Institutional Portfolio Manager (Aladdin Wealth Engine).
+            Analyze this client portfolio in Indian Rupees (INR) strictly against their configured Investment Policy Statement (IPS):
+            
+            - Investor Name: {investor_name}
+            - Statement of Purpose: {statement_of_purpose}
+            - LLTTUV Constraints:
+              * Liquidity: {liquidity_needs}
+              * Legal/Regulatory: {legal_reg}
+              * Time Horizon: {time_horizon}
+              * Tax Considerations: {tax_considerations}
+              * Unique Circumstances / ESG: {unique_circumstances}
+            - Strategic Asset Allocation (SAA) Targets: Equities & Crypto: {target_eq}%, Mutual Funds: {target_mf}% (Drift Tolerance: ±{drift_band}%)
+            - Risk & Benchmark: VaR Limit: {var_limit}, Benchmark: {benchmark_index}
+            
+            Portfolio Holdings Summary:
+            - Total Portfolio Value: ₹{total_portfolio_value:,.2f}
+            - Equities & Crypto Allocation: ₹{total_stock_crypto_val:,.2f} ({(total_stock_crypto_val/total_portfolio_value)*100:.1f}%)
+            - Mutual Funds Allocation: ₹{total_mf_val:,.2f} ({(total_mf_val/total_portfolio_value)*100:.1f}%)
+            
+            Provide:
+            1. Executive alignment review of current allocations against the SAA targets and LLTTUV constraints.
+            2. Risk & correlation analysis considering the benchmark ({benchmark_index}) and unique circumstances.
+            3. A 3-step actionable rebalancing plan with concrete percentage adjustments.
+            """
+            
+            payload = {"contents": [{"parts": [{"text": system_prompt}]}]}
+            headers = {'Content-Type': 'application/json'}
+            
+            response = requests.post(url, headers=headers, json=payload)
+            if response.status_code == 200:
+                initial_advice = response.json()['candidates'][0]['content']['parts'][0]['text']
+                st.markdown(initial_advice)
+            else:
+                st.error(f"API Error: {response.text}")
+
+            # ==========================================
+            # STEP 4: Interactive Chat with Gemini (Guarded by IPS)
+            # ==========================================
+            st.markdown("---")
+            st.subheader("💬 Chat with Gemini (Institutional Advisor)")
+            st.markdown("Ask questions regarding your portfolio rebalancing, tax efficiency under Indian tax laws, or risk exposures. All responses are guarded by your approved IPS framework.")
+
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
+
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+            if user_query := st.chat_input("Ask your Aladdin Advisor a question..."):
+                st.session_state.messages.append({"role": "user", "content": user_query})
+                with st.chat_message("user"):
+                    st.markdown(user_query)
+
+                with st.chat_message("assistant"):
+                    chat_context = f"""
+                    You are an institutional portfolio advisor (Aladdin Wealth Engine). 
+                    You must answer the client's question strictly adhering to their approved IPS:
+                    - Investor: {investor_name}
+                    - Statement of Purpose: {statement_of_purpose}
+                    - Liquidity: {liquidity_needs} | Time Horizon: {time_horizon} | Tax: {tax_considerations}
+                    - Unique Circumstances: {unique_circumstances}
+                    - SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%
+                    - Total Portfolio Value: ₹{total_portfolio_value:,.2f}
+                    
+                    Client Question: {user_query}
+                    """
+                    chat_payload = {"contents": [{"parts": [{"text": chat_context}]}]}
+                    chat_response = requests.post(url, headers=headers, json=chat_payload)
+                    
+                    if chat_response.status_code == 200:
+                        chat_reply = chat_response.json()['candidates'][0]['content']['parts'][0]['text']
+                        st.markdown(chat_reply)
+                        st.session_state.messages.append({"role": "assistant", "content": chat_reply})
+                    else:
+                        st.error("Error communicating with Gemini chat API.")
+        else:
+            st.warning("⚠️ GEMINI_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory and chat.")
 else:
-    st.info("👈 Please fill out the optional IPS questionnaire above and upload both portfolio files to initiate institutional analytics.")
+    st.info("👈 Please fill out the IPS questionnaire above and upload both portfolio files to initiate institutional analytics.")
