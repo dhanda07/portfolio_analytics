@@ -232,4 +232,72 @@ if stock_file is not None and mf_file is not None:
                 color_continuous_scale="Blues", range_color=[-1, 1],
                 title=f"<b>Cross-Asset Correlation Matrix (Benchmark: {benchmark_index})</b>"
             )
-            st.plotly_chart(fig_corr
+            st.plotly_chart(fig_corr, use_container_width=True)
+
+        # ==========================================
+        # STEP 3: Gemini LLM Institutional Advisory
+        # ==========================================
+        st.markdown("---")
+        st.header("🤖 Institutional LLM Portfolio Advisory")
+        
+        if "GEMINI_API_KEY" in st.secrets:
+            api_key = st.secrets["GEMINI_API_KEY"]
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
+            
+            @st.cache_data(show_spinner="Generating institutional portfolio advice...")
+            def fetch_gemini_advisory(prompt_text):
+                payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
+                headers = {'Content-Type': 'application/json'}
+                try:
+                    res = requests.post(url, headers=headers, json=payload, timeout=8)
+                    if res.status_code == 200:
+                        return res.json()['candidates'][0]['content']['parts'][0]['text']
+                    else:
+                        return None
+                except Exception:
+                    return None
+
+            system_prompt = f"""
+            You are a Senior CFA Charterholder and Institutional Portfolio Manager.
+            Analyze this client portfolio in Indian Rupees (INR) strictly against their configured Investment Policy Statement (IPS):
+            - Investor Name: {investor_name}
+            - Statement of Purpose: {statement_of_purpose}
+            - LLTTUV Constraints: Liquidity: {liquidity_needs}, Legal: {legal_reg}, Time Horizon: {time_horizon}, Tax: {tax_considerations}, Unique: {unique_circumstances}
+            - SAA Targets: Equities & Crypto: {target_eq}%, Mutual Funds: {target_mf}% (Drift Tolerance: ±{drift_band}%)
+            - Risk & Benchmark: VaR Limit: {var_limit}, Benchmark: {benchmark_index}
+            - Portfolio Value: ₹{total_portfolio_value:,.2f}
+            
+            Provide:
+            1. Executive alignment review against SAA targets.
+            2. Risk & correlation analysis.
+            3. A 3-step actionable rebalancing plan.
+            """
+            
+            advice_output = fetch_gemini_advisory(system_prompt)
+            
+            if advice_output:
+                st.markdown(advice_output)
+            else:
+                st.warning("⚠️ External LLM API timed out. Displaying structured CFA Institutional Advisory fallback:")
+                st.markdown(f"""
+                ### 📌 Executive CFA Portfolio Review ({investor_name})
+                * **Statement of Purpose Alignment:** The portfolio is structured around *"{statement_of_purpose}"*. Current liquidity needs are classified as **{liquidity_needs}**.
+                * **Strategic Asset Allocation (SAA) Drift Analysis:** 
+                  * Target Equity/Crypto: **{target_eq}%** | Actual: **{stock_crypto_pct:.1f}%**
+                  * Target Mutual Funds: **{target_mf}%** | Actual: **{mf_pct:.1f}%**
+                  * *Drift Status:* Current allocation is within the tactical drift tolerance band of **±{drift_band}%**.
+                * **Risk & Tax Governance:** Evaluated against **{benchmark_index}** with a VaR threshold set to **{var_limit}**. Tax considerations follow **{tax_considerations}**.
+                * **Actionable 3-Step Rebalancing Plan:**
+                  1. **Cash & Liquidity Buffer:** Maintain sufficient liquid reserves to satisfy near-term payout requirements under the **{liquidity_needs}** constraint.
+                  2. **Tactical Drift Rebalancing:** Periodically rebalance if asset classes breach the **±{drift_band}%** tactical corridor.
+                  3. **Tax-Loss Harvesting / Capital Gains Optimization:** Align asset sales with **{tax_considerations}** to minimize tax drag under Indian tax regulations.
+                """)
+
+            # ==========================================
+            # STEP 4: Interactive Chat with Institutional Advisor
+            # ==========================================
+            st.markdown("---")
+            st.subheader("💬 Chat with Institutional Advisor")
+            st.markdown("Ask questions regarding your portfolio rebalancing, tax efficiency under Indian tax laws, or risk exposures. All responses are guarded by your approved IPS framework.")
+
+            if "messages" not in st.session
