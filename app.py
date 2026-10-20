@@ -6,18 +6,59 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import io
+import base64
 
 # Page Configuration
 st.set_page_config(
-    page_title="Aladdin Wealth & Risk Engine",
+    page_title="Institutional Wealth & Risk Engine",
     page_icon="🛡️",
     layout="wide"
 )
 
-st.title("🛡️ Aladdin Wealth: Institutional Portfolio Analytics & IPS Engine")
-st.markdown("Welcome to your institutional-grade portfolio risk engine. Configure client IPS constraints, upload portfolio files, and review multi-asset risk analytics alongside Gemini institutional advisory.")
+st.title("🛡️ Institutional Wealth & Risk Engine: Portfolio Analytics & IPS Framework")
+st.markdown("Welcome to your institutional-grade portfolio risk engine. Configure client IPS constraints, download sample templates or upload your portfolio files, and review multi-asset risk analytics alongside institutional LLM advisory.")
 
 st.markdown("---")
+
+# ==========================================
+# HELPER: Sample File Generator & Downloader
+# ==========================================
+def create_sample_excel_files():
+    # 1. Equities & Crypto Sample
+    output_stock = io.BytesIO()
+    with pd.ExcelWriter(output_stock, engine='openpyxl') as writer:
+        # Add metadata header rows to test header skipping logic
+        meta_df = pd.DataFrame([["Institutional Stock & Crypto Portfolio"], ["Currency: INR (₹)"]])
+        meta_df.to_excel(writer, sheet_name="Holdings", index=False, header=False)
+        
+        data_stocks = pd.DataFrame({
+            "Asset Type": ["Equity", "Equity", "Crypto", "Equity"],
+            "Stock Name": ["Reliance Industries", "Tata Consultancy Services", "Bitcoin (INR)", "HDFC Bank"],
+            "Ticker": ["RELIANCE.NS", "TCS.NS", "BTC-INR", "HDFCBANK.NS"],
+            "Quantity": [50, 30, 0.05, 100],
+            "Closing Value": [145000.00, 120000.00, 285500.75, 109000.00]
+        })
+        data_stocks.to_excel(writer, sheet_name="Holdings", index=False, startrow=5)
+    output_stock.seek(0)
+
+    # 2. Mutual Funds Sample
+    output_mf = io.BytesIO()
+    with pd.ExcelWriter(output_mf, engine='openpyxl') as writer:
+        meta_mf = pd.DataFrame([["Expanded Mutual Funds Portfolio"], ["Valuation Date: Current"]])
+        meta_mf.to_excel(writer, sheet_name="MF_Holdings", index=False, header=False)
+        
+        data_mf = pd.DataFrame({
+            "Scheme Name": ["Mirae Asset Large Cap Fund", "SBI Bluechip Fund", "Axis Growth Opportunities Fund", "Nippon India Small Cap Fund"],
+            "AMC": ["Mirae Asset", "SBI Mutual Fund", "Axis Mutual Fund", "Nippon India"],
+            "Units": [1500.50, 2200.00, 1800.25, 3100.00],
+            "Current Value": [2250000.00, 1500000.00, 950000.00, 550000.00]
+        })
+        data_mf.to_excel(writer, sheet_name="MF_Holdings", index=False, startrow=10)
+    output_mf.seek(0)
+    
+    return output_stock.getvalue(), output_mf.getvalue()
+
+stock_bytes, mf_bytes = create_sample_excel_files()
 
 # ==========================================
 # STEP 1: Interactive Client IPS Questionnaire
@@ -77,16 +118,33 @@ with st.form("ips_questionnaire_form"):
 st.markdown("---")
 
 # ==========================================
-# STEP 2: Portfolio Holdings Ingestion
+# STEP 2: Portfolio Holdings Ingestion & Sample Downloads
 # ==========================================
 st.header("📁 Step 2: Portfolio Holdings Ingestion")
+st.markdown("Download sample institutional templates below to test the engine, or upload your own portfolio files.")
+
+dl_col1, dl_col2 = st.columns(2)
+with dl_col1:
+    st.download_button(
+        label="📥 Download Sample Stocks & Crypto Template",
+        data=stock_bytes,
+        file_name="stock_crypto_portfolio.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+with dl_col2:
+    st.download_button(
+        label="📥 Download Sample Mutual Funds Template",
+        data=mf_bytes,
+        file_name="mf_portfolio.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+st.markdown("")
 col_up1, col_up2 = st.columns(2)
 with col_up1:
-    st.subheader("1. Equities & Crypto Portfolio")
     stock_file = st.file_uploader("Upload Stocks & Crypto (Excel/CSV)", type=["xlsx", "csv"], key="stocks")
 
 with col_up2:
-    st.subheader("2. Expanded Mutual Funds Portfolio")
     mf_file = st.file_uploader("Upload Mutual Funds (Excel/CSV)", type=["xlsx", "csv"], key="mf")
 
 if stock_file is not None and mf_file is not None:
@@ -175,14 +233,14 @@ if stock_file is not None and mf_file is not None:
             st.plotly_chart(fig_corr, use_container_width=True)
 
         # ==========================================
-        # STEP 3: Gemini LLM Institutional Advisory (Cached & Timeout Optimized)
+        # STEP 3: Gemini LLM Institutional Advisory
         # ==========================================
         st.markdown("---")
-        st.header("🤖 Aladdin Wealth LLM Institutional Advisory")
+        st.header("🤖 Institutional LLM Portfolio Advisory")
         
         if "GEMINI_API_KEY" in st.secrets:
             api_key = st.secrets["GEMINI_API_KEY"]
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
             
             @st.cache_data(show_spinner="Generating institutional portfolio advice...")
             def fetch_gemini_advisory(prompt_text):
@@ -200,7 +258,7 @@ if stock_file is not None and mf_file is not None:
                     return f"⚠️ Error connecting to Gemini API: {str(e)}"
 
             system_prompt = f"""
-            You are a Senior CFA Charterholder and Institutional Portfolio Manager (Aladdin Wealth Engine).
+            You are a Senior CFA Charterholder and Institutional Portfolio Manager.
             Analyze this client portfolio in Indian Rupees (INR) strictly against their configured Investment Policy Statement (IPS):
             
             - Investor Name: {investor_name}
@@ -218,61 +276,3 @@ if stock_file is not None and mf_file is not None:
             - Total Portfolio Value: ₹{total_portfolio_value:,.2f}
             - Equities & Crypto Allocation: ₹{total_stock_crypto_val:,.2f} ({(total_stock_crypto_val/total_portfolio_value)*100:.1f}%)
             - Mutual Funds Allocation: ₹{total_mf_val:,.2f} ({(total_mf_val/total_portfolio_value)*100:.1f}%)
-            
-            Provide:
-            1. Executive alignment review of current allocations against the SAA targets and LLTTUV constraints.
-            2. Risk & correlation analysis considering the benchmark ({benchmark_index}) and unique circumstances.
-            3. A 3-step actionable rebalancing plan with concrete percentage adjustments.
-            """
-            
-            advice_output = fetch_gemini_advisory(system_prompt)
-            st.markdown(advice_output)
-
-            # ==========================================
-            # STEP 4: Interactive Chat with Gemini (Guarded by IPS)
-            # ==========================================
-            st.markdown("---")
-            st.subheader("💬 Chat with Gemini (Institutional Advisor)")
-            st.markdown("Ask questions regarding your portfolio rebalancing, tax efficiency under Indian tax laws, or risk exposures. All responses are guarded by your approved IPS framework.")
-
-            if "messages" not in st.session_state:
-                st.session_state.messages = []
-
-            for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-
-            if user_query := st.chat_input("Ask your Aladdin Advisor a question..."):
-                st.session_state.messages.append({"role": "user", "content": user_query})
-                with st.chat_message("user"):
-                    st.markdown(user_query)
-
-                with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
-                        chat_context = f"""
-                        You are an institutional portfolio advisor (Aladdin Wealth Engine). 
-                        Answer the client's question strictly adhering to their approved IPS:
-                        - Investor: {investor_name}
-                        - Statement of Purpose: {statement_of_purpose}
-                        - Liquidity: {liquidity_needs} | Time Horizon: {time_horizon} | Tax: {tax_considerations}
-                        - Unique Circumstances: {unique_circumstances}
-                        - SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%
-                        - Total Portfolio Value: ₹{total_portfolio_value:,.2f}
-                        
-                        Client Question: {user_query}
-                        """
-                        chat_payload = {"contents": [{"parts": [{"text": chat_context}]}]}
-                        try:
-                            chat_res = requests.post(url, headers={'Content-Type': 'application/json'}, json=chat_payload, timeout=10)
-                            if chat_res.status_code == 200:
-                                chat_reply = chat_res.json()['candidates'][0]['content']['parts'][0]['text']
-                                st.markdown(chat_reply)
-                                st.session_state.messages.append({"role": "assistant", "content": chat_reply})
-                            else:
-                                st.error("Error communicating with Gemini chat API.")
-                        except requests.exceptions.Timeout:
-                            st.error("⚠️ Request timed out. Please try sending a shorter prompt.")
-        else:
-            st.warning("⚠️ GEMINI_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory and chat.")
-else:
-    st.info("👈 Please fill out the IPS questionnaire above and upload both portfolio files to initiate institutional analytics.")
