@@ -175,15 +175,30 @@ if stock_file is not None and mf_file is not None:
             st.plotly_chart(fig_corr, use_container_width=True)
 
         # ==========================================
-        # STEP 3: Gemini LLM Institutional Advisory
+        # STEP 3: Gemini LLM Institutional Advisory (Cached & Timeout Optimized)
         # ==========================================
         st.markdown("---")
         st.header("🤖 Aladdin Wealth LLM Institutional Advisory")
         
         if "GEMINI_API_KEY" in st.secrets:
             api_key = st.secrets["GEMINI_API_KEY"]
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
             
+            @st.cache_data(show_spinner="Generating institutional portfolio advice...")
+            def fetch_gemini_advisory(prompt_text):
+                payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
+                headers = {'Content-Type': 'application/json'}
+                try:
+                    res = requests.post(url, headers=headers, json=payload, timeout=12)
+                    if res.status_code == 200:
+                        return res.json()['candidates'][0]['content']['parts'][0]['text']
+                    else:
+                        return f"API Error ({res.status_code}): {res.text}"
+                except requests.exceptions.Timeout:
+                    return "⚠️ Request timed out. Gemini API is taking longer than expected. Please try again."
+                except Exception as e:
+                    return f"⚠️ Error connecting to Gemini API: {str(e)}"
+
             system_prompt = f"""
             You are a Senior CFA Charterholder and Institutional Portfolio Manager (Aladdin Wealth Engine).
             Analyze this client portfolio in Indian Rupees (INR) strictly against their configured Investment Policy Statement (IPS):
@@ -210,15 +225,8 @@ if stock_file is not None and mf_file is not None:
             3. A 3-step actionable rebalancing plan with concrete percentage adjustments.
             """
             
-            payload = {"contents": [{"parts": [{"text": system_prompt}]}]}
-            headers = {'Content-Type': 'application/json'}
-            
-            response = requests.post(url, headers=headers, json=payload)
-            if response.status_code == 200:
-                initial_advice = response.json()['candidates'][0]['content']['parts'][0]['text']
-                st.markdown(initial_advice)
-            else:
-                st.error(f"API Error: {response.text}")
+            advice_output = fetch_gemini_advisory(system_prompt)
+            st.markdown(advice_output)
 
             # ==========================================
             # STEP 4: Interactive Chat with Gemini (Guarded by IPS)
@@ -240,27 +248,30 @@ if stock_file is not None and mf_file is not None:
                     st.markdown(user_query)
 
                 with st.chat_message("assistant"):
-                    chat_context = f"""
-                    You are an institutional portfolio advisor (Aladdin Wealth Engine). 
-                    You must answer the client's question strictly adhering to their approved IPS:
-                    - Investor: {investor_name}
-                    - Statement of Purpose: {statement_of_purpose}
-                    - Liquidity: {liquidity_needs} | Time Horizon: {time_horizon} | Tax: {tax_considerations}
-                    - Unique Circumstances: {unique_circumstances}
-                    - SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%
-                    - Total Portfolio Value: ₹{total_portfolio_value:,.2f}
-                    
-                    Client Question: {user_query}
-                    """
-                    chat_payload = {"contents": [{"parts": [{"text": chat_context}]}]}
-                    chat_response = requests.post(url, headers=headers, json=chat_payload)
-                    
-                    if chat_response.status_code == 200:
-                        chat_reply = chat_response.json()['candidates'][0]['content']['parts'][0]['text']
-                        st.markdown(chat_reply)
-                        st.session_state.messages.append({"role": "assistant", "content": chat_reply})
-                    else:
-                        st.error("Error communicating with Gemini chat API.")
+                    with st.spinner("Thinking..."):
+                        chat_context = f"""
+                        You are an institutional portfolio advisor (Aladdin Wealth Engine). 
+                        Answer the client's question strictly adhering to their approved IPS:
+                        - Investor: {investor_name}
+                        - Statement of Purpose: {statement_of_purpose}
+                        - Liquidity: {liquidity_needs} | Time Horizon: {time_horizon} | Tax: {tax_considerations}
+                        - Unique Circumstances: {unique_circumstances}
+                        - SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%
+                        - Total Portfolio Value: ₹{total_portfolio_value:,.2f}
+                        
+                        Client Question: {user_query}
+                        """
+                        chat_payload = {"contents": [{"parts": [{"text": chat_context}]}]}
+                        try:
+                            chat_res = requests.post(url, headers={'Content-Type': 'application/json'}, json=chat_payload, timeout=10)
+                            if chat_res.status_code == 200:
+                                chat_reply = chat_res.json()['candidates'][0]['content']['parts'][0]['text']
+                                st.markdown(chat_reply)
+                                st.session_state.messages.append({"role": "assistant", "content": chat_reply})
+                            else:
+                                st.error("Error communicating with Gemini chat API.")
+                        except requests.exceptions.Timeout:
+                            st.error("⚠️ Request timed out. Please try sending a shorter prompt.")
         else:
             st.warning("⚠️ GEMINI_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory and chat.")
 else:
