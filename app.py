@@ -235,7 +235,7 @@ if stock_file is not None and mf_file is not None:
             st.plotly_chart(fig_corr, use_container_width=True)
 
         # ==========================================
-        # STEP 3: DeepSeek LLM Institutional Advisory
+        # STEP 3: DeepSeek LLM Institutional Advisory (45s Timeout)
         # ==========================================
         st.markdown("---")
         st.header("🤖 Institutional LLM Portfolio Advisory (DeepSeek)")
@@ -244,7 +244,7 @@ if stock_file is not None and mf_file is not None:
             deepseek_key = st.secrets["DEEPSEEK_API_KEY"]
             url = "https://api.deepseek.com/chat/completions"
             
-            @st.cache_data(show_spinner="Generating institutional portfolio advice via DeepSeek...")
+            @st.cache_data(show_spinner="Generating institutional portfolio advice via DeepSeek (up to 45s headroom)...")
             def fetch_deepseek_advisory(prompt_text):
                 headers = {
                     'Content-Type': 'application/json',
@@ -259,7 +259,7 @@ if stock_file is not None and mf_file is not None:
                     "stream": False
                 }
                 try:
-                    res = requests.post(url, headers=headers, json=payload, timeout=15)
+                    res = requests.post(url, headers=headers, json=payload, timeout=45)
                     if res.status_code == 200:
                         return res.json()['choices'][0]['message']['content']
                     else:
@@ -273,78 +273,4 @@ if stock_file is not None and mf_file is not None:
             - Statement of Purpose: {statement_of_purpose}
             - LLTTUV Constraints: Liquidity: {liquidity_needs}, Legal: {legal_reg}, Time Horizon: {time_horizon}, Tax: {tax_considerations}, Unique: {unique_circumstances}
             - SAA Targets: Equities & Crypto: {target_eq}%, Mutual Funds: {target_mf}% (Drift Tolerance: ±{drift_band}%)
-            - Risk & Benchmark: VaR Limit: {var_limit}, Benchmark: {benchmark_index}
-            - Portfolio Value: ₹{total_portfolio_value:,.2f}
-            
-            Provide:
-            1. Executive alignment review against SAA targets.
-            2. Risk & correlation analysis.
-            3. A 3-step actionable rebalancing plan.
-            """
-            
-            advice_output = fetch_deepseek_advisory(system_prompt)
-            
-            if advice_output:
-                st.markdown(advice_output)
-            else:
-                st.warning("⚠️ DeepSeek API timed out. Displaying structured CFA Institutional Advisory fallback:")
-                st.markdown(f"""
-                ### 📌 Executive CFA Portfolio Review ({investor_name})
-                * **Statement of Purpose Alignment:** The portfolio is structured around *"{statement_of_purpose}"*. Current liquidity needs are classified as **{liquidity_needs}**.
-                * **Strategic Asset Allocation (SAA) Drift Analysis:** 
-                  * Target Equity/Crypto: **{target_eq}%** | Actual: **{stock_crypto_pct:.1f}%**
-                  * Target Mutual Funds: **{target_mf}%** | Actual: **{mf_pct:.1f}%**
-                  * *Drift Status:* Current allocation is within the tactical drift tolerance band of **±{drift_band}%**.
-                * **Risk & Tax Governance:** Evaluated against **{benchmark_index}** with a VaR threshold set to **{var_limit}**. Tax considerations follow **{tax_considerations}**.
-                * **Actionable 3-Step Rebalancing Plan:**
-                  1. **Cash & Liquidity Buffer:** Maintain sufficient liquid reserves to satisfy near-term payout requirements under the **{liquidity_needs}** constraint.
-                  2. **Tactical Drift Rebalancing:** Periodically rebalance if asset classes breach the **±{drift_band}%** tactical corridor.
-                  3. **Tax-Loss Harvesting / Capital Gains Optimization:** Align asset sales with **{tax_considerations}** to minimize tax drag under Indian tax regulations.
-                """)
-
-            # ==========================================
-            # STEP 4: Interactive Chat with DeepSeek Advisor
-            # ==========================================
-            st.markdown("---")
-            st.subheader("💬 Chat with Institutional Advisor (DeepSeek)")
-            st.markdown("Ask questions regarding your portfolio rebalancing, tax efficiency under Indian tax laws, or risk exposures. All responses are guarded by your approved IPS framework.")
-
-            if "messages" not in st.session_state:
-                st.session_state.messages = []
-
-            for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-
-            if user_query := st.chat_input("Ask your portfolio advisor a question..."):
-                st.session_state.messages.append({"role": "user", "content": user_query})
-                with st.chat_message("user"):
-                    st.markdown(user_query)
-
-                with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
-                        chat_messages = [
-                            {"role": "system", "content": f"You are an institutional portfolio advisor. Answer concisely adhering to the approved IPS for {investor_name}, SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%."}
-                        ]
-                        for m in st.session_state.messages:
-                            chat_messages.append({"role": m["role"], "content": m["content"]})
-                            
-                        chat_payload = {
-                            "model": "deepseek-chat",
-                            "messages": chat_messages,
-                            "stream": False
-                        }
-                        try:
-                            chat_res = requests.post(url, headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {deepseek_key}'}, json=chat_payload, timeout=12)
-                            if chat_res.status_code == 200:
-                                chat_reply = chat_res.json()['choices'][0]['message']['content']
-                                st.markdown(chat_reply)
-                                st.session_state.messages.append({"role": "assistant", "content": chat_reply})
-                            else:
-                                st.markdown(f"**Advisor Response:** Based on your IPS and SAA targets ({target_eq}% Equities, {target_mf}% Mutual Funds), ensure your rebalancing aligns with your **{liquidity_needs}** liquidity profile and **{tax_considerations}** tax strategy.")
-                        except Exception:
-                            st.markdown(f"**Advisor Response:** Based on your approved IPS for {investor_name}, your asset allocation is aligned with your defined risk parameters and benchmark ({benchmark_index}).")
-        else:
-            st.warning("⚠️ DEEPSEEK_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory and chat.")
-else:
-    st.info("👈 Please fill out the IPS questionnaire above, download or upload your portfolio files to initiate institutional analytics.")
+            - Risk & Benchmark: VaR Limit: {var_limit}, Benchmark: {
