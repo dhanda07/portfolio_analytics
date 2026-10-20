@@ -263,18 +263,4 @@ if stock_file is not None and mf_file is not None:
             - Investor Name: {investor_name}
             - Statement of Purpose: {statement_of_purpose}
             - LLTTUV Constraints: Liquidity: {liquidity_needs}, Legal: {legal_reg}, Time Horizon: {time_horizon}, Tax: {tax_considerations}, Unique: {unique_circumstances}
-            - SAA Targets: Equities & Crypto: {target_eq}%, Mutual Funds: {target_mf}% (Drift Tolerance: ±{drift_band}%)
-            - Risk & Benchmark: VaR Limit: {var_limit}, Benchmark: {benchmark_index}
-            - Portfolio Value: ₹{total_portfolio_value:,.2f}
-            
-            Provide:
-            1. Executive alignment review against SAA targets.
-            2. Risk & correlation analysis.
-            3. A 3-step actionable rebalancing plan.
-            """
-            
-            advice_output = fetch_gemini_advisory(system_prompt)
-            
-            if advice_output:
-                st.markdown(advice_output)
-            else
+            - SAA Targets: Equities & Crypto: {target_eq}%, Mutual Funds: {
