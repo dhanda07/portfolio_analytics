@@ -295,9 +295,3 @@ if stock_file is not None and mf_file is not None:
 
             # ==========================================
             # STEP 4: Interactive Chat with Institutional Advisor
-            # ==========================================
-            st.markdown("---")
-            st.subheader("💬 Chat with Institutional Advisor")
-            st.markdown("Ask questions regarding your portfolio rebalancing, tax efficiency under Indian tax laws, or risk exposures. All responses are guarded by your approved IPS framework.")
-
-            if "messages" not in st.session
