@@ -8,12 +8,12 @@ import io
 
 # Page Configuration
 st.set_page_config(
-    page_title="Aladdin Wealth & Risk Engine",
+    page_title="Wealth & Risk Engine",
     page_icon="🛡️",
     layout="wide"
 )
 
-st.title("🛡️ Aladdin Wealth: Institutional Portfolio Analytics & IPS Engine")
+st.title("🛡️ Wealth: Institutional Portfolio Analytics & IPS Engine")
 st.markdown("Welcome to your institutional-grade portfolio risk engine. Complete the client onboarding questionnaire below to define the Investment Policy Statement (IPS), upload your portfolio files, and review multi-asset risk analytics.")
 
 st.markdown("---")
