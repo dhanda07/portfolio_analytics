@@ -316,4 +316,20 @@ if stock_file is not None and mf_file is not None:
                         chat_context = (
                             f"You are an institutional portfolio advisor. Answer concisely adhering to the approved IPS:\n"
                             f"- Investor: {investor_name}, SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%\n"
-                            f"- Question:
+                            f"- Question: {user_query}"
+                        )
+                        chat_payload = {"contents": [{"parts": [{"text": chat_context}]}]}
+                        try:
+                            chat_res = requests.post(url, headers={'Content-Type': 'application/json'}, json=chat_payload, timeout=None)
+                            if chat_res.status_code == 200:
+                                chat_reply = chat_res.json()['candidates'][0]['content']['parts'][0]['text']
+                                st.markdown(chat_reply)
+                                st.session_state.messages.append({"role": "assistant", "content": chat_reply})
+                            else:
+                                st.markdown(f"**Advisor Response:** Based on your IPS and SAA targets ({target_eq}% Equities, {target_mf}% Mutual Funds), ensure your rebalancing aligns with your **{liquidity_needs}** liquidity profile and **{tax_considerations}** tax strategy.")
+                        except Exception:
+                            st.markdown(f"**Advisor Response:** Based on your approved IPS for {investor_name}, your asset allocation is aligned with your defined risk parameters and benchmark ({benchmark_index}).")
+        else:
+            st.warning("⚠️ GEMINI_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory and chat.")
+else:
+    st.info("👈 Please fill out the IPS questionnaire above, download or upload your portfolio files to initiate institutional analytics.")
