@@ -259,7 +259,7 @@ if stock_file is not None and mf_file is not None:
                     "stream": False
                 }
                 try:
-                    res = requests.post(url, headers=headers, json=payload, timeout=45)
+                    res = requests.post(url, headers=headers, json=payload, timeout=None)
                     if res.status_code == 200:
                         return res.json()['choices'][0]['message']['content']
                     else:
