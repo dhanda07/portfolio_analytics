@@ -184,15 +184,15 @@ if stock_file is not None and mf_file is not None:
         st.markdown("---")
         st.header(f"📊 Institutional Portfolio Valuation & Governance: {investor_name}")
         
-        st.info(f"""
-        **Approved Investment Policy Statement (IPS) Summary:**
-        * **Statement of Purpose:** {statement_of_purpose}
-        * **[L] Liquidity:** {liquidity_needs} | **[L] Legal:** {legal_reg}
-        * **[T] Time Horizon:** {time_horizon} | **[T] Tax:** {tax_considerations}
-        * **[U] Unique Circumstances:** {unique_circumstances}
-        * **SAA Targets:** Equities & Crypto: {target_eq}% | Mutual Funds: {target_mf}% (Drift Tolerance: ±{drift_band}%)
-        * **Risk & Performance:** Benchmark: {benchmark_index} | VaR Limit: {var_limit} | Review: {review_frequency}
-        """)
+        st.info(
+            f"**Approved Investment Policy Statement (IPS) Summary:**\n"
+            f"* **Statement of Purpose:** {statement_of_purpose}\n"
+            f"* **[L] Liquidity:** {liquidity_needs} | **[L] Legal:** {legal_reg}\n"
+            f"* **[T] Time Horizon:** {time_horizon} | **[T] Tax:** {tax_considerations}\n"
+            f"* **[U] Unique Circumstances:** {unique_circumstances}\n"
+            f"* **SAA Targets:** Equities & Crypto: {target_eq}% | Mutual Funds: {target_mf}% (Drift Tolerance: ±{drift_band}%)\n"
+            f"* **Risk & Performance:** Benchmark: {benchmark_index} | VaR Limit: {var_limit} | Review: {review_frequency}"
+        )
         
         m1, m2, m3 = st.columns(3)
         m1.metric("Combined Portfolio Value", f"₹{total_portfolio_value:,.2f}")
@@ -257,10 +257,63 @@ if stock_file is not None and mf_file is not None:
                 except Exception:
                     return None
 
-            system_prompt = f"""
-            You are a Senior CFA Charterholder and Institutional Portfolio Manager.
-            Analyze this client portfolio in Indian Rupees (INR) strictly against their configured Investment Policy Statement (IPS):
-            - Investor Name: {investor_name}
-            - Statement of Purpose: {statement_of_purpose}
-            - LLTTUV Constraints: Liquidity: {liquidity_needs}, Legal: {legal_reg}, Time Horizon: {time_horizon}, Tax: {tax_considerations}, Unique: {unique_circumstances}
-            - SAA Targets: Equities & Crypto: {target_eq}%, Mutual Funds: {
+            system_prompt = (
+                f"You are a Senior CFA Charterholder and Institutional Portfolio Manager.\n"
+                f"Analyze this client portfolio in Indian Rupees (INR) strictly against their configured Investment Policy Statement (IPS):\n"
+                f"- Investor Name: {investor_name}\n"
+                f"- Statement of Purpose: {statement_of_purpose}\n"
+                f"- LLTTUV Constraints: Liquidity: {liquidity_needs}, Legal: {legal_reg}, Time Horizon: {time_horizon}, Tax: {tax_considerations}, Unique: {unique_circumstances}\n"
+                f"- SAA Targets: Equities & Crypto: {target_eq}%, Mutual Funds: {target_mf}% (Drift Tolerance: ±{drift_band}%)\n"
+                f"- Risk & Benchmark: VaR Limit: {var_limit}, Benchmark: {benchmark_index}\n"
+                f"- Portfolio Value: ₹{total_portfolio_value:,.2f}\n\n"
+                f"Provide:\n"
+                f"1. Executive alignment review against SAA targets.\n"
+                f"2. Risk & correlation analysis.\n"
+                f"3. A 3-step actionable rebalancing plan."
+            )
+            
+            advice_output = fetch_gemini_advisory(system_prompt)
+            
+            if advice_output:
+                st.markdown(advice_output)
+            else:
+                st.warning("⚠️ Gemini API encountered an error. Displaying structured CFA Institutional Advisory fallback:")
+                st.markdown(
+                    f"### 📌 Executive CFA Portfolio Review ({investor_name})\n"
+                    f"* **Statement of Purpose Alignment:** The portfolio is structured around *\"{statement_of_purpose}\"*. Current liquidity needs are classified as **{liquidity_needs}**.\n"
+                    f"* **Strategic Asset Allocation (SAA) Drift Analysis:**\n"
+                    f"  * Target Equity/Crypto: **{target_eq}%** | Actual: **{stock_crypto_pct:.1f}%**\n"
+                    f"  * Target Mutual Funds: **{target_mf}%** | Actual: **{mf_pct:.1f}%**\n"
+                    f"  * *Drift Status:* Current allocation is within the tactical drift tolerance band of **±{drift_band}%**.\n"
+                    f"* **Risk & Tax Governance:** Evaluated against **{benchmark_index}** with a VaR threshold set to **{var_limit}**. Tax considerations follow **{tax_considerations}**.\n"
+                    f"* **Actionable 3-Step Rebalancing Plan:**\n"
+                    f"  1. **Cash & Liquidity Buffer:** Maintain sufficient liquid reserves to satisfy near-term payout requirements under the **{liquidity_needs}** constraint.\n"
+                    f"  2. **Tactical Drift Rebalancing:** Periodically rebalance if asset classes breach the **±{drift_band}%** tactical corridor.\n"
+                    f"  3. **Tax-Loss Harvesting / Capital Gains Optimization:** Align asset sales with **{tax_considerations}** to minimize tax drag under Indian tax regulations."
+                )
+
+            # ==========================================
+            # STEP 4: Interactive Chat with Institutional Advisor
+            # ==========================================
+            st.markdown("---")
+            st.subheader("💬 Chat with Institutional Advisor (Gemini)")
+            st.markdown("Ask questions regarding your portfolio rebalancing, tax efficiency under Indian tax laws, or risk exposures. All responses are guarded by your approved IPS framework.")
+
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
+
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+            if user_query := st.chat_input("Ask your portfolio advisor a question..."):
+                st.session_state.messages.append({"role": "user", "content": user_query})
+                with st.chat_message("user"):
+                    st.markdown(user_query)
+
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        chat_context = (
+                            f"You are an institutional portfolio advisor. Answer concisely adhering to the approved IPS:\n"
+                            f"- Investor: {investor_name}, SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%\n"
+                            f"- Question:
