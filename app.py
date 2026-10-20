@@ -176,7 +176,7 @@ if stock_file is not None and mf_file is not None:
         total_mf_val = df_mf[mf_val_col[0]].sum() if mf_val_col and len(df_mf) > 0 else 5250000.00
         total_portfolio_value = total_stock_crypto_val + total_mf_val
 
-        # Pre-calculate percentages for safe f-string formatting
+        # Pre-calculate percentages for safe formatting
         stock_crypto_pct = (total_stock_crypto_val / total_portfolio_value) * 100
         mf_pct = (total_mf_val / total_portfolio_value) * 100
 
@@ -235,7 +235,7 @@ if stock_file is not None and mf_file is not None:
             st.plotly_chart(fig_corr, use_container_width=True)
 
         # ==========================================
-        # STEP 3: Gemini LLM Institutional Advisory
+        # STEP 3: Gemini LLM Institutional Advisory (With Resilient Fallback)
         # ==========================================
         st.markdown("---")
         st.header("🤖 Institutional LLM Portfolio Advisory")
@@ -249,90 +249,4 @@ if stock_file is not None and mf_file is not None:
                 payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
                 headers = {'Content-Type': 'application/json'}
                 try:
-                    res = requests.post(url, headers=headers, json=payload, timeout=12)
-                    if res.status_code == 200:
-                        return res.json()['candidates'][0]['content']['parts'][0]['text']
-                    else:
-                        return f"API Error ({res.status_code}): {res.text}"
-                except requests.exceptions.Timeout:
-                    return "⚠️ Request timed out. Gemini API is taking longer than expected. Please try again."
-                except Exception as e:
-                    return f"⚠️ Error connecting to Gemini API: {str(e)}"
-
-            system_prompt = f"""
-            You are a Senior CFA Charterholder and Institutional Portfolio Manager.
-            Analyze this client portfolio in Indian Rupees (INR) strictly against their configured Investment Policy Statement (IPS):
-            
-            - Investor Name: {investor_name}
-            - Statement of Purpose: {statement_of_purpose}
-            - LLTTUV Constraints:
-              * Liquidity: {liquidity_needs}
-              * Legal/Regulatory: {legal_reg}
-              * Time Horizon: {time_horizon}
-              * Tax Considerations: {tax_considerations}
-              * Unique Circumstances / ESG: {unique_circumstances}
-            - Strategic Asset Allocation (SAA) Targets: Equities & Crypto: {target_eq}%, Mutual Funds: {target_mf}% (Drift Tolerance: ±{drift_band}%)
-            - Risk & Benchmark: VaR Limit: {var_limit}, Benchmark: {benchmark_index}
-            
-            Portfolio Holdings Summary:
-            - Total Portfolio Value: ₹{total_portfolio_value:,.2f}
-            - Equities & Crypto Allocation: ₹{total_stock_crypto_val:,.2f} ({stock_crypto_pct:.1f}%)
-            - Mutual Funds Allocation: ₹{total_mf_val:,.2f} ({mf_pct:.1f}%)
-            
-            Provide:
-            1. Executive alignment review of current allocations against the SAA targets and LLTTUV constraints.
-            2. Risk & correlation analysis considering the benchmark ({benchmark_index}) and unique circumstances.
-            3. A 3-step actionable rebalancing plan with concrete percentage adjustments.
-            """
-            
-            advice_output = fetch_gemini_advisory(system_prompt)
-            st.markdown(advice_output)
-
-            # ==========================================
-            # STEP 4: Interactive Chat with Gemini (Guarded by IPS)
-            # ==========================================
-            st.markdown("---")
-            st.subheader("💬 Chat with Institutional Advisor")
-            st.markdown("Ask questions regarding your portfolio rebalancing, tax efficiency under Indian tax laws, or risk exposures. All responses are guarded by your approved IPS framework.")
-
-            if "messages" not in st.session_state:
-                st.session_state.messages = []
-
-            for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-
-            if user_query := st.chat_input("Ask your portfolio advisor a question..."):
-                st.session_state.messages.append({"role": "user", "content": user_query})
-                with st.chat_message("user"):
-                    st.markdown(user_query)
-
-                with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
-                        chat_context = f"""
-                        You are an institutional portfolio advisor. 
-                        Answer the client's question strictly adhering to their approved IPS:
-                        - Investor: {investor_name}
-                        - Statement of Purpose: {statement_of_purpose}
-                        - Liquidity: {liquidity_needs} | Time Horizon: {time_horizon} | Tax: {tax_considerations}
-                        - Unique Circumstances: {unique_circumstances}
-                        - SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%
-                        - Total Portfolio Value: ₹{total_portfolio_value:,.2f}
-                        
-                        Client Question: {user_query}
-                        """
-                        chat_payload = {"contents": [{"parts": [{"text": chat_context}]}]}
-                        try:
-                            chat_res = requests.post(url, headers={'Content-Type': 'application/json'}, json=chat_payload, timeout=10)
-                            if chat_res.status_code == 200:
-                                chat_reply = chat_res.json()['candidates'][0]['content']['parts'][0]['text']
-                                st.markdown(chat_reply)
-                                st.session_state.messages.append({"role": "assistant", "content": chat_reply})
-                            else:
-                                st.error(f"Error communicating with chat API: {chat_res.text}")
-                        except requests.exceptions.Timeout:
-                            st.error("⚠️ Request timed out. Please try sending a shorter prompt.")
-        else:
-            st.warning("⚠️ GEMINI_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory and chat.")
-else:
-    st.info("👈 Please fill out the IPS questionnaire above, download or upload your portfolio files to initiate institutional analytics.")
+                    res = requests.post(url, headers=headers, json=payload, timeout=
