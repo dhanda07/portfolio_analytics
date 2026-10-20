@@ -6,7 +6,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import io
-import base64
 
 # Page Configuration
 st.set_page_config(
@@ -27,7 +26,6 @@ def create_sample_excel_files():
     # 1. Equities & Crypto Sample
     output_stock = io.BytesIO()
     with pd.ExcelWriter(output_stock, engine='openpyxl') as writer:
-        # Add metadata header rows to test header skipping logic
         meta_df = pd.DataFrame([["Institutional Stock & Crypto Portfolio"], ["Currency: INR (₹)"]])
         meta_df.to_excel(writer, sheet_name="Holdings", index=False, header=False)
         
@@ -178,6 +176,10 @@ if stock_file is not None and mf_file is not None:
         total_mf_val = df_mf[mf_val_col[0]].sum() if mf_val_col and len(df_mf) > 0 else 5250000.00
         total_portfolio_value = total_stock_crypto_val + total_mf_val
 
+        # Pre-calculate percentages for safe f-string formatting
+        stock_crypto_pct = (total_stock_crypto_val / total_portfolio_value) * 100
+        mf_pct = (total_mf_val / total_portfolio_value) * 100
+
         # Display Summary Metrics & Institutional IPS Summary Box
         st.markdown("---")
         st.header(f"📊 Institutional Portfolio Valuation & Governance: {investor_name}")
@@ -194,8 +196,8 @@ if stock_file is not None and mf_file is not None:
         
         m1, m2, m3 = st.columns(3)
         m1.metric("Combined Portfolio Value", f"₹{total_portfolio_value:,.2f}")
-        m2.metric("Equities & Crypto Allocation", f"₹{total_stock_crypto_val:,.2f} ({(total_stock_crypto_val/total_portfolio_value)*100:.1f}%)")
-        m3.metric("Expanded Mutual Funds Allocation", f"₹{total_mf_val:,.2f} ({(total_mf_val/total_portfolio_value)*100:.1f}%)")
+        m2.metric("Equities & Crypto Allocation", f"₹{total_stock_crypto_val:,.2f} ({stock_crypto_pct:.1f}%)")
+        m3.metric("Expanded Mutual Funds Allocation", f"₹{total_mf_val:,.2f} ({mf_pct:.1f}%)")
 
         # Visualizations
         st.markdown("---")
@@ -274,5 +276,63 @@ if stock_file is not None and mf_file is not None:
             
             Portfolio Holdings Summary:
             - Total Portfolio Value: ₹{total_portfolio_value:,.2f}
-            - Equities & Crypto Allocation: ₹{total_stock_crypto_val:,.2f} ({(total_stock_crypto_val/total_portfolio_value)*100:.1f}%)
-            - Mutual Funds Allocation: ₹{total_mf_val:,.2f} ({(total_mf_val/total_portfolio_value)*100:.1f}%)
+            - Equities & Crypto Allocation: ₹{total_stock_crypto_val:,.2f} ({stock_crypto_pct:.1f}%)
+            - Mutual Funds Allocation: ₹{total_mf_val:,.2f} ({mf_pct:.1f}%)
+            
+            Provide:
+            1. Executive alignment review of current allocations against the SAA targets and LLTTUV constraints.
+            2. Risk & correlation analysis considering the benchmark ({benchmark_index}) and unique circumstances.
+            3. A 3-step actionable rebalancing plan with concrete percentage adjustments.
+            """
+            
+            advice_output = fetch_gemini_advisory(system_prompt)
+            st.markdown(advice_output)
+
+            # ==========================================
+            # STEP 4: Interactive Chat with Gemini (Guarded by IPS)
+            # ==========================================
+            st.markdown("---")
+            st.subheader("💬 Chat with Institutional Advisor")
+            st.markdown("Ask questions regarding your portfolio rebalancing, tax efficiency under Indian tax laws, or risk exposures. All responses are guarded by your approved IPS framework.")
+
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
+
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+            if user_query := st.chat_input("Ask your portfolio advisor a question..."):
+                st.session_state.messages.append({"role": "user", "content": user_query})
+                with st.chat_message("user"):
+                    st.markdown(user_query)
+
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        chat_context = f"""
+                        You are an institutional portfolio advisor. 
+                        Answer the client's question strictly adhering to their approved IPS:
+                        - Investor: {investor_name}
+                        - Statement of Purpose: {statement_of_purpose}
+                        - Liquidity: {liquidity_needs} | Time Horizon: {time_horizon} | Tax: {tax_considerations}
+                        - Unique Circumstances: {unique_circumstances}
+                        - SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%
+                        - Total Portfolio Value: ₹{total_portfolio_value:,.2f}
+                        
+                        Client Question: {user_query}
+                        """
+                        chat_payload = {"contents": [{"parts": [{"text": chat_context}]}]}
+                        try:
+                            chat_res = requests.post(url, headers={'Content-Type': 'application/json'}, json=chat_payload, timeout=10)
+                            if chat_res.status_code == 200:
+                                chat_reply = chat_res.json()['candidates'][0]['content']['parts'][0]['text']
+                                st.markdown(chat_reply)
+                                st.session_state.messages.append({"role": "assistant", "content": chat_reply})
+                            else:
+                                st.error(f"Error communicating with chat API: {chat_res.text}")
+                        except requests.exceptions.Timeout:
+                            st.error("⚠️ Request timed out. Please try sending a shorter prompt.")
+        else:
+            st.warning("⚠️ GEMINI_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory and chat.")
+else:
+    st.info("👈 Please fill out the IPS questionnaire above, download or upload your portfolio files to initiate institutional analytics.")
