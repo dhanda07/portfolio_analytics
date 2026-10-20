@@ -156,7 +156,7 @@ if stock_file is not None and mf_file is not None:
                 stock_skip = i
                 break
         df_stocks = pd.read_excel(stock_file, skiprows=stock_skip) if not stock_file.name.endswith('.csv') else pd.read_csv(stock_file, skiprows=stock_skip)
-        df_stocks.columns = df_stocks.columns.str.strip()
+        df_stocks.columns = [str(c).strip() for c in df_stocks.columns]
 
         # Parse Mutual Funds
         df_mf_raw = pd.read_csv(mf_file, header=None) if mf_file.name.endswith('.csv') else pd.read_excel(mf_file, header=None)
@@ -166,7 +166,7 @@ if stock_file is not None and mf_file is not None:
                 mf_skip = i
                 break
         df_mf = pd.read_excel(mf_file, skiprows=mf_skip) if not mf_file.name.endswith('.csv') else pd.read_csv(mf_file, skiprows=mf_skip)
-        df_mf.columns = df_mf.columns.str.strip()
+        df_mf.columns = [str(c).strip() for c in df_mf.columns]
 
         # Extract Valuations in INR
         stock_val_col = [c for c in df_stocks.columns if 'closing value' in c.lower() or 'value' in c.lower()]
@@ -277,60 +277,4 @@ if stock_file is not None and mf_file is not None:
             
             if advice_output:
                 st.markdown(advice_output)
-            else:
-                st.warning("⚠️ Gemini API encountered an error. Displaying structured CFA Institutional Advisory fallback:")
-                st.markdown(f"""
-                ### 📌 Executive CFA Portfolio Review ({investor_name})
-                * **Statement of Purpose Alignment:** The portfolio is structured around *"{statement_of_purpose}"*. Current liquidity needs are classified as **{liquidity_needs}**.
-                * **Strategic Asset Allocation (SAA) Drift Analysis:** 
-                  * Target Equity/Crypto: **{target_eq}%** | Actual: **{stock_crypto_pct:.1f}%**
-                  * Target Mutual Funds: **{target_mf}%** | Actual: **{mf_pct:.1f}%**
-                  * *Drift Status:* Current allocation is within the tactical drift tolerance band of **±{drift_band}%**.
-                * **Risk & Tax Governance:** Evaluated against **{benchmark_index}** with a VaR threshold set to **{var_limit}**. Tax considerations follow **{tax_considerations}**.
-                * **Actionable 3-Step Rebalancing Plan:**
-                  1. **Cash & Liquidity Buffer:** Maintain sufficient liquid reserves to satisfy near-term payout requirements under the **{liquidity_needs}** constraint.
-                  2. **Tactical Drift Rebalancing:** Periodically rebalance if asset classes breach the **±{drift_band}%** tactical corridor.
-                  3. **Tax-Loss Harvesting / Capital Gains Optimization:** Align asset sales with **{tax_considerations}** to minimize tax drag under Indian tax regulations.
-                """)
-
-            # ==========================================
-            # STEP 4: Interactive Chat with Institutional Advisor
-            # ==========================================
-            st.markdown("---")
-            st.subheader("💬 Chat with Institutional Advisor (Gemini)")
-            st.markdown("Ask questions regarding your portfolio rebalancing, tax efficiency under Indian tax laws, or risk exposures. All responses are guarded by your approved IPS framework.")
-
-            if "messages" not in st.session_state:
-                st.session_state.messages = []
-
-            for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-
-            if user_query := st.chat_input("Ask your portfolio advisor a question..."):
-                st.session_state.messages.append({"role": "user", "content": user_query})
-                with st.chat_message("user"):
-                    st.markdown(user_query)
-
-                with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
-                        chat_context = f"""
-                        You are an institutional portfolio advisor. Answer concisely adhering to the approved IPS:
-                        - Investor: {investor_name}, SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%
-                        - Question: {user_query}
-                        """
-                        chat_payload = {"contents": [{"parts": [{"text": chat_context}]}]}
-                        try:
-                            chat_res = requests.post(url, headers={'Content-Type': 'application/json'}, json=chat_payload, timeout=None)
-                            if chat_res.status_code == 200:
-                                chat_reply = chat_res.json()['candidates'][0]['content']['parts'][0]['text']
-                                st.markdown(chat_reply)
-                                st.session_state.messages.append({"role": "assistant", "content": chat_reply})
-                            else:
-                                st.markdown(f"**Advisor Response:** Based on your IPS and SAA targets ({target_eq}% Equities, {target_mf}% Mutual Funds), ensure your rebalancing aligns with your **{liquidity_needs}** liquidity profile and **{tax_considerations}** tax strategy.")
-                        except Exception:
-                            st.markdown(f"**Advisor Response:** Based on your approved IPS for {investor_name}, your asset allocation is aligned with your defined risk parameters and benchmark ({benchmark_index}).")
-        else:
-            st.warning("⚠️ GEMINI_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory and chat.")
-else:
-    st.info("👈 Please fill out the IPS questionnaire above, download or upload your portfolio files to initiate institutional analytics.")
+            else
