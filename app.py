@@ -235,7 +235,7 @@ if stock_file is not None and mf_file is not None:
             st.plotly_chart(fig_corr, use_container_width=True)
 
         # ==========================================
-        # STEP 3: DeepSeek LLM Institutional Advisory (45s Timeout)
+        # STEP 3: DeepSeek LLM Institutional Advisory (No Timeout)
         # ==========================================
         st.markdown("---")
         st.header("🤖 Institutional LLM Portfolio Advisory (DeepSeek)")
@@ -244,7 +244,7 @@ if stock_file is not None and mf_file is not None:
             deepseek_key = st.secrets["DEEPSEEK_API_KEY"]
             url = "https://api.deepseek.com/chat/completions"
             
-            @st.cache_data(show_spinner="Generating institutional portfolio advice via DeepSeek (up to 45s headroom)...")
+            @st.cache_data(show_spinner="Generating institutional portfolio advice via DeepSeek (no timeout limit)...")
             def fetch_deepseek_advisory(prompt_text):
                 headers = {
                     'Content-Type': 'application/json',
@@ -287,7 +287,7 @@ if stock_file is not None and mf_file is not None:
             if advice_output:
                 st.markdown(advice_output)
             else:
-                st.warning("⚠️ DeepSeek API timed out after 45 seconds. Displaying structured CFA Institutional Advisory fallback:")
+                st.warning("⚠️ DeepSeek API encountered an error. Displaying structured CFA Institutional Advisory fallback:")
                 st.markdown(f"""
                 ### 📌 Executive CFA Portfolio Review ({investor_name})
                 * **Statement of Purpose Alignment:** The portfolio is structured around *"{statement_of_purpose}"*. Current liquidity needs are classified as **{liquidity_needs}**.
@@ -326,3 +326,25 @@ if stock_file is not None and mf_file is not None:
                         chat_messages = [
                             {"role": "system", "content": f"You are an institutional portfolio advisor. Answer concisely adhering to the approved IPS for {investor_name}, SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%."}
                         ]
+                        for m in st.session_state.messages:
+                            chat_messages.append({"role": m["role"], "content": m["content"]})
+                            
+                        chat_payload = {
+                            "model": "deepseek-chat",
+                            "messages": chat_messages,
+                            "stream": False
+                        }
+                        try:
+                            chat_res = requests.post(url, headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {deepseek_key}'}, json=chat_payload, timeout=None)
+                            if chat_res.status_code == 200:
+                                chat_reply = chat_res.json()['choices'][0]['message']['content']
+                                st.markdown(chat_reply)
+                                st.session_state.messages.append({"role": "assistant", "content": chat_reply})
+                            else:
+                                st.markdown(f"**Advisor Response:** Based on your IPS and SAA targets ({target_eq}% Equities, {target_mf}% Mutual Funds), ensure your rebalancing aligns with your **{liquidity_needs}** liquidity profile and **{tax_considerations}** tax strategy.")
+                        except Exception:
+                            st.markdown(f"**Advisor Response:** Based on your approved IPS for {investor_name}, your asset allocation is aligned with your defined risk parameters and benchmark ({benchmark_index}).")
+        else:
+            st.warning("⚠️ DEEPSEEK_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory and chat.")
+else:
+    st.info("👈 Please fill out the IPS questionnaire above, download or upload your portfolio files to initiate institutional analytics.")
