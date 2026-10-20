@@ -235,39 +235,30 @@ if stock_file is not None and mf_file is not None:
             st.plotly_chart(fig_corr, use_container_width=True)
 
         # ==========================================
-        # STEP 3: DeepSeek LLM Institutional Advisory (No Timeout)
+        # STEP 3: Gemini LLM Institutional Advisory (No Timeout)
         # ==========================================
         st.markdown("---")
-        st.header("🤖 Institutional LLM Portfolio Advisory (DeepSeek)")
+        st.header("🤖 Institutional LLM Portfolio Advisory (Gemini)")
         
-        if "DEEPSEEK_API_KEY" in st.secrets:
-            deepseek_key = st.secrets["DEEPSEEK_API_KEY"]
-            url = "https://api.deepseek.com/chat/completions"
+        if "GEMINI_API_KEY" in st.secrets:
+            api_key = st.secrets["GEMINI_API_KEY"]
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
             
-            @st.cache_data(show_spinner="Generating institutional portfolio advice via DeepSeek (no timeout limit)...")
-            def fetch_deepseek_advisory(prompt_text):
-                headers = {
-                    'Content-Type': 'application/json',
-                    'Authorization': f'Bearer {deepseek_key}'
-                }
-                payload = {
-                    "model": "deepseek-chat",
-                    "messages": [
-                        {"role": "system", "content": "You are a Senior CFA Charterholder and Institutional Portfolio Manager."},
-                        {"role": "user", "content": prompt_text}
-                    ],
-                    "stream": False
-                }
+            @st.cache_data(show_spinner="Generating institutional portfolio advice via Gemini (no timeout limit)...")
+            def fetch_gemini_advisory(prompt_text):
+                payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
+                headers = {'Content-Type': 'application/json'}
                 try:
                     res = requests.post(url, headers=headers, json=payload, timeout=None)
                     if res.status_code == 200:
-                        return res.json()['choices'][0]['message']['content']
+                        return res.json()['candidates'][0]['content']['parts'][0]['text']
                     else:
                         return None
                 except Exception:
                     return None
 
             system_prompt = f"""
+            You are a Senior CFA Charterholder and Institutional Portfolio Manager.
             Analyze this client portfolio in Indian Rupees (INR) strictly against their configured Investment Policy Statement (IPS):
             - Investor Name: {investor_name}
             - Statement of Purpose: {statement_of_purpose}
@@ -282,12 +273,12 @@ if stock_file is not None and mf_file is not None:
             3. A 3-step actionable rebalancing plan.
             """
             
-            advice_output = fetch_deepseek_advisory(system_prompt)
+            advice_output = fetch_gemini_advisory(system_prompt)
             
             if advice_output:
                 st.markdown(advice_output)
             else:
-                st.warning("⚠️ DeepSeek API encountered an error. Displaying structured CFA Institutional Advisory fallback:")
+                st.warning("⚠️ Gemini API encountered an error. Displaying structured CFA Institutional Advisory fallback:")
                 st.markdown(f"""
                 ### 📌 Executive CFA Portfolio Review ({investor_name})
                 * **Statement of Purpose Alignment:** The portfolio is structured around *"{statement_of_purpose}"*. Current liquidity needs are classified as **{liquidity_needs}**.
@@ -303,10 +294,10 @@ if stock_file is not None and mf_file is not None:
                 """)
 
             # ==========================================
-            # STEP 4: Interactive Chat with DeepSeek Advisor
+            # STEP 4: Interactive Chat with Institutional Advisor
             # ==========================================
             st.markdown("---")
-            st.subheader("💬 Chat with Institutional Advisor (DeepSeek)")
+            st.subheader("💬 Chat with Institutional Advisor (Gemini)")
             st.markdown("Ask questions regarding your portfolio rebalancing, tax efficiency under Indian tax laws, or risk exposures. All responses are guarded by your approved IPS framework.")
 
             if "messages" not in st.session_state:
@@ -323,21 +314,16 @@ if stock_file is not None and mf_file is not None:
 
                 with st.chat_message("assistant"):
                     with st.spinner("Thinking..."):
-                        chat_messages = [
-                            {"role": "system", "content": f"You are an institutional portfolio advisor. Answer concisely adhering to the approved IPS for {investor_name}, SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%."}
-                        ]
-                        for m in st.session_state.messages:
-                            chat_messages.append({"role": m["role"], "content": m["content"]})
-                            
-                        chat_payload = {
-                            "model": "deepseek-chat",
-                            "messages": chat_messages,
-                            "stream": False
-                        }
+                        chat_context = f"""
+                        You are an institutional portfolio advisor. Answer concisely adhering to the approved IPS:
+                        - Investor: {investor_name}, SAA Targets: Equities/Crypto {target_eq}%, Mutual Funds {target_mf}%
+                        - Question: {user_query}
+                        """
+                        chat_payload = {"contents": [{"parts": [{"text": chat_context}]}]}
                         try:
-                            chat_res = requests.post(url, headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {deepseek_key}'}, json=chat_payload, timeout=None)
+                            chat_res = requests.post(url, headers={'Content-Type': 'application/json'}, json=chat_payload, timeout=None)
                             if chat_res.status_code == 200:
-                                chat_reply = chat_res.json()['choices'][0]['message']['content']
+                                chat_reply = chat_res.json()['candidates'][0]['content']['parts'][0]['text']
                                 st.markdown(chat_reply)
                                 st.session_state.messages.append({"role": "assistant", "content": chat_reply})
                             else:
@@ -345,6 +331,6 @@ if stock_file is not None and mf_file is not None:
                         except Exception:
                             st.markdown(f"**Advisor Response:** Based on your approved IPS for {investor_name}, your asset allocation is aligned with your defined risk parameters and benchmark ({benchmark_index}).")
         else:
-            st.warning("⚠️ DEEPSEEK_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory and chat.")
+            st.warning("⚠️ GEMINI_API_KEY not found in Streamlit Secrets. Please add it in your Streamlit Cloud app settings under Settings -> Secrets to enable AI advisory and chat.")
 else:
     st.info("👈 Please fill out the IPS questionnaire above, download or upload your portfolio files to initiate institutional analytics.")
